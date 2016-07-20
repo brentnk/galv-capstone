@@ -24,7 +24,7 @@
   <div class="wrapper">
     <div class="searchbox">
       <input id='searchBox' type="text" name="searchTerms"
-        placeholder="chipotle" onkeypress="handleSearch(event)">
+        placeholder="chipotle;hardware store;etc..." onkeypress="handleSearch(event)">
     </div>
     <div id="map-canvas"></div>
   </div>
@@ -81,16 +81,14 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
 }, {zoomDraw:true})
 
 var options = {
-  radiusRange: [5,5],
-  radius: 5,
+  radiusRange: [7,7],
+  radius: 7,
   opacity: 0.70,
   lng: function(d){ return d[1]; },
   lat: function(d){ return d[2]; },
   value: function(d){ return d.length; },
   valueFloor: 0,
   valueCeil: undefined
-  // colorRange: d3.interpolateRgbBasis(function(){ return 'b9e3c6-59c9a5-d81e5b-23395b-fffd98'.split('-')
-  //   .map(function(s){ return '#' + s; })})
 }
 
 

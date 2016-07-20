@@ -28,7 +28,7 @@ def radarrequest(terms):
     location = [39.7047, -105.0814]
     kwparams = {}
     print('Serving terms {}'.format(terms))
-    for t in terms.split(';'):
+    for t in terms.split(';')[:15]:
         t = t.strip()
         if t in search_types:
             print('Using type search [{}]'.format(t))
@@ -38,7 +38,7 @@ def radarrequest(terms):
         res[t] = rd.radar(location, kwparams, db,
             radius=25000,
             key=config.get('keys', 'google_places_api_key'),
-            upsample=5)
+            upsample=50)
         res['terms'].append(t)
     return json.dumps(res)
 
