@@ -6,7 +6,14 @@
     <style type="text/css">
         html { height: 100% }
         body { height: 100%; margin: 0; padding: 0 }
-        #map-canvas { height: 100% }
+        .wrapper { position: relative; min-height: 100%; }
+        .searchbox { position: absolute;
+          top:20px, left: 20px;
+          padding-left: 60px;
+          padding-top: 20px;
+          z-index: 99;}
+        #searchBox { font-size: xx-large }
+        #map-canvas { height: 100vh }
     </style>
     <link href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css'
     	rel='stylesheet' type='text/css'/>
@@ -14,19 +21,33 @@
 
 </head>
 <body>
-  <div class="searchbox"></div>
-  <div id="map-canvas"></div>
+  <div class="wrapper">
+    <div class="searchbox">
+      <input id='searchBox' type="text" name="searchTerms"
+        placeholder="chipotle" onkeypress="handleSearch(event)">
+    </div>
+    <div id="map-canvas"></div>
+  </div>
 <script src="https://code.jquery.com/jquery-3.1.0.slim.min.js"   integrity="sha256-cRpWjoSOw5KcyIOaZNo4i6fZ9tKPhYYb6i5T9RSVJG8=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js"></script>
-<script src="js/L.D3SvgOverlay.min.js"></script>
+<script src="bower/leaflet-d3-svg-overlay/L.D3SvgOverlay.min.js"></script>
+<script src="bower/leaflet-hexbin-2/dist/leaflet-hexbin.min.js"></script>
+<script src="bower/d3-plugins/hexbin/hexbin.js"></script>
+<script src="https://d3js.org/d3-color.v1.min.js"></script>
+<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+<script src="https://d3js.org/d3-scale.v1.min.js"></script>
 <script>
-
+function handleSearch(e) {
+  if(e.keyCode === 13) {
+    var term = document.getElementById('searchBox').value
+    console.log('handleSearch() ' + term)
+    searchTerms(term)
+  }
+}
 
 var map = L.map("map-canvas",{center:[39.7047, -105.0814],zoom:11});
-L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',{ attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }).addTo(map);
 
 var cities = [];
 var citiesOverlay = L.d3SvgOverlay(function(sel,proj){
@@ -43,7 +64,7 @@ var citiesOverlay = L.d3SvgOverlay(function(sel,proj){
     .attr('fill',function(d){return (d.place == 'city') ? "red" : "blue";});
 });
 
-var poi = {};
+var poi = [];
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
 
   console.log(proj.scale)
@@ -59,10 +80,32 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill-opacity', .37)
 }, {zoomDraw:true})
 
-d3.json('/api/radar/chipotle', function(data) {
-  poi = data.chipotle
-  poiOverlay.addTo(map)
-})
+var options = {
+  radiusRange: [5,5],
+  radius: 5,
+  opacity: 0.70,
+  lng: function(d){ return d[1]; },
+  lat: function(d){ return d[2]; },
+  value: function(d){ return d.length; },
+  valueFloor: 0,
+  valueCeil: undefined
+  // colorRange: d3.interpolateRgbBasis(function(){ return 'b9e3c6-59c9a5-d81e5b-23395b-fffd98'.split('-')
+  //   .map(function(s){ return '#' + s; })})
+}
+
+
+function searchTerms(terms) {
+  d3.json('/api/radar/' + terms, function(data) {
+    console.log(data.terms)
+    data.terms.forEach( function(term) {
+      poi = poi.concat(data[term]);
+    });
+    // poiOverlay.addTo(map)
+    var hexOverlay = L.hexbinLayer(options).addTo(map);
+    hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
+    hexOverlay.data(poi)
+  });
+}
 
 // d3.csv("data/swiss-cities.csv",function(data){
 //   cities = data.map(function(d){

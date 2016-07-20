@@ -68,9 +68,9 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     return collection
 
 def rayleigh_upsample(loc=np.array([0.0,0.0]), mean_shift=1, samples=20, mean=2):
-    magnitude = np.random.rayleigh(mean, size=samples) * (mean_shift * 1.0 / mean)
-    direction = np.random.rand(samples) * 2 * 3.141559
-    return (np.atleast_2d(loc) + pol2cart(magnitude, direction)).tolist()
+        magnitude = np.random.rayleigh(mean, size=samples) * (mean_shift * 1.0 / mean)
+        direction = np.random.rand(samples) * 2 * 3.141559
+        return (np.atleast_2d(loc) + pol2cart(magnitude, direction)).tolist()
 
 def upsample_feature(f):
     fill_template = lambda a: {'type': 'Feature', 'properties': {'name': f['properties']['name']},
