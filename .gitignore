@@ -1,2 +1,6 @@
 .ipynb_checkpoints
 secrets.conf
+swiss-cities.csv
+d3.hexbin.js
+L.D3SvgOverlay.min.js
+*.pyc
