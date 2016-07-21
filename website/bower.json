@@ -1,0 +1,25 @@
+{
+  "name": "galv-capstone",
+  "homepage": "https://github.com/brentnk/galv-capstone",
+  "authors": [
+    "Brent Nkomo <brent.nkomo@gmail.com>"
+  ],
+  "description": "Capstone project",
+  "main": "",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "d3": "^4.1.1",
+    "leaflet": "^0.7.7",
+    "leaflet-hexbin-2": "*",
+    "leaflet-d3-svg-overlay": "^2.2.0",
+    "d3-interpolate": "^1.1.0"
+  }
+}
