@@ -1,7 +1,6 @@
 import requests
 import json
 import numpy as np
-from scipy.spatial.distance import pdist
 from multiprocessing import Pool
 import functools
 
