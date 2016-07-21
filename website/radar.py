@@ -56,7 +56,7 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     if upsample > 0:
         pool = Pool(8)
         print('upsampling collection {}...'.format(len(collection)))
-        pp = functools.partial(rayleigh_upsample,mean_shift=.01, samples=upsample, mean=2)
+        pp = functools.partial(rayleigh_upsample,mean_shift=.0105, samples=upsample, mean=3)
         print(type(collection))
         ups = pool.map(pp, np.array([x[1:] for x in collection]))
         for u in ups:

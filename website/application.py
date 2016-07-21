@@ -38,7 +38,7 @@ def radarrequest(terms):
         res[t] = rd.radar(location, kwparams, db,
             radius=25000,
             key=config.get('keys', 'google_places_api_key'),
-            upsample=50)
+            upsample=700)
         res['terms'].append(t)
     return json.dumps(res)
 

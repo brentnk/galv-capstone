@@ -10,7 +10,7 @@
         .searchbox { position: absolute;
           top:20px, left: 20px;
           padding-left: 60px;
-          padding-top: 20px;
+          padding-top: 14px;
           z-index: 99;}
         #searchBox { font-size: xx-large }
         #map-canvas { height: 100vh }
@@ -34,35 +34,36 @@
 <script src="bower/leaflet-d3-svg-overlay/L.D3SvgOverlay.min.js"></script>
 <script src="bower/leaflet-hexbin-2/dist/leaflet-hexbin.min.js"></script>
 <script src="bower/d3-plugins/hexbin/hexbin.js"></script>
+<script src="bower/underscore/underscore-min.js"></script>
 <script src="https://d3js.org/d3-color.v1.min.js"></script>
 <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
 <script src="https://d3js.org/d3-scale.v1.min.js"></script>
 <script>
 function handleSearch(e) {
   if(e.keyCode === 13) {
-    var term = document.getElementById('searchBox').value
-    console.log('handleSearch() ' + term)
-    searchTerms(term)
+    var term = document.getElementById('searchBox')
+    console.log('handleSearch() ' + term.value)
+    searchTerms(term.value)
+    term.value = ''
   }
 }
 
 var map = L.map("map-canvas",{center:[39.7047, -105.0814],zoom:11});
 L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',{ attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }).addTo(map);
 
-var cities = [];
-var citiesOverlay = L.d3SvgOverlay(function(sel,proj){
+var options = {
+  radiusRange: [7,7],
+  radius: 7,
+  opacity: 0.47,
+  lng: function(d){ return d[1]; },
+  lat: function(d){ return d[2]; },
+  value: pdfCounter,
+  valueFloor: 0,
+  valueCeil: undefined
+}
 
-  var minLogPop = Math.log2(d3.min(cities,function(d){return d.population;}));
-  var citiesUpd = sel.selectAll('circle').data(cities);
-  citiesUpd.enter()
-    .append('circle')
-    .attr('r',function(d){return Math.log2(d.population) - minLogPop + 2;})
-    .attr('cx',function(d){return proj.latLngToLayerPoint(d.latLng).x;})
-    .attr('cy',function(d){return proj.latLngToLayerPoint(d.latLng).y;})
-    .attr('stroke','black')
-    .attr('stroke-width',1)
-    .attr('fill',function(d){return (d.place == 'city') ? "red" : "blue";});
-});
+var hexOverlay = L.hexbinLayer(options).addTo(map);
+
 
 var poi = [];
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
@@ -80,39 +81,41 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill-opacity', .37)
 }, {zoomDraw:true})
 
-var options = {
-  radiusRange: [7,7],
-  radius: 7,
-  opacity: 0.60,
-  lng: function(d){ return d[1]; },
-  lat: function(d){ return d[2]; },
-  value: function(d){ return d.length; },
-  valueFloor: 0,
-  valueCeil: undefined
+function uniqueCellCounter(d){
+  // console.log(d);
+  var s = d.reduce(function(a, b){
+    return a.add(b.d[0])},
+    new Set()).size;
+  return s;
 }
+
+function sumCellCounter(d) {
+  return d.length;
+}
+
+function logSumCellCounter(d) {
+  // console.log(Math.log(d.length));
+  return 10.0 * Math.log(d.length);
+}
+
+function pdfCounter(d) {
+  return d.length;
+}
+
 
 
 function searchTerms(terms) {
   d3.json('/api/radar/' + terms, function(data) {
-    console.log(data.terms)
+    console.log(data)
     data.terms.forEach( function(term) {
       poi = poi.concat(data[term]);
     });
-    // poiOverlay.addTo(map)
-    var hexOverlay = L.hexbinLayer(options).addTo(map);
+
     hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
     hexOverlay.data(poi)
   });
 }
 
-// d3.csv("data/swiss-cities.csv",function(data){
-//   cities = data.map(function(d){
-//     d.latLng = [+d.lat,+d.lng];
-//     d.population = (d.population == '') ? 2000 : +d.population; //NAs
-//     return d;
-//   });
-//   citiesOverlay.addTo(map);
-// });
 
 
 </script>
