@@ -32,7 +32,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js"></script>
 <script src="bower/leaflet-d3-svg-overlay/L.D3SvgOverlay.min.js"></script>
-<script src="bower/leaflet-hexbin-2/dist/leaflet-hexbin.min.js"></script>
+<script src="bower/leaflet-hexbin-2/dist/leaflet-hexbin.js"></script>
 <script src="bower/d3-plugins/hexbin/hexbin.js"></script>
 <script src="bower/underscore/underscore-min.js"></script>
 <script src="https://d3js.org/d3-color.v1.min.js"></script>
@@ -57,7 +57,7 @@ var options = {
   opacity: 0.47,
   lng: function(d){ return d[1]; },
   lat: function(d){ return d[2]; },
-  value: pdfCounter,
+  value: uniqueCellCounter,
   valueFloor: 0,
   valueCeil: undefined
 }
@@ -66,6 +66,8 @@ var hexOverlay = L.hexbinLayer(options).addTo(map);
 
 
 var poi = [];
+var totals = {}
+
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
 
   console.log(proj.scale)
@@ -98,20 +100,27 @@ function logSumCellCounter(d) {
   return 10.0 * Math.log(d.length);
 }
 
-function pdfCounter(d) {
-  return d.length;
+function sumScaledCounter(d) {
+  var s = d.reduce(function(a, b){
+    return a.add(b.d[0])},
+    new Set()).size;
+  var v = d.reduce( function(a,b){
+    // console.log(b.d)
+    return b.d.length < 4? (1.0 / totals[b.d[0]]) + a: b.d[3] + a ;
+  },0)
+  // console.log(poi.length, d.length, v / s, poi.length * (v / s))
+  return v / s;
 }
-
-
 
 function searchTerms(terms) {
   d3.json('/api/radar/' + terms, function(data) {
     console.log(data)
     data.terms.forEach( function(term) {
       poi = poi.concat(data[term]);
+      totals[term] = data[term].length
     });
 
-    hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
+    hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis).domain([0,1]))
     hexOverlay.data(poi)
   });
 }

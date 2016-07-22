@@ -10,6 +10,10 @@ app = Flask(__name__, static_url_path='')
 def home():
     return render_template('./index.html')
 
+@app.route('/hexbin')
+def hx():
+    return render_template('./hexbin_test.html')
+
 @app.route('/bower/<path:path>')
 def send_bower(path):
     return send_from_directory('bower_components',path)
