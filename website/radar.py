@@ -75,16 +75,6 @@ def rayleigh_upsample(loc=np.array([0.0,0.0]), mean_shift=1, samples=20, mean=2)
         direction = np.random.rand(samples) * 2 * 3.141559
         return (np.atleast_2d(loc) + pol2cart(magnitude, direction)).tolist()
 
-def upsample_feature(f):
-    fill_template = lambda a: {'type': 'Feature', 'properties': {'name': f['properties']['name']},
-        'geometry': { 'type': 'Point', 'coordinates': a}}
-    if f['geometry']['type'] == 'Point':
-        for point in rayleigh_upsample(loc=np.array(f['geometry']['coordinates'][::-1]),
-            mean_shift=.01, samples=50, mean=2).tolist():
-            yield fill_template(point)
-    else:
-        print('[{}] upsample feature invalid type'.format(f['geometry']['type']))
-        yield None
 
 def parse_gresults(results, params):
     collection = []

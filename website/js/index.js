@@ -47,28 +47,28 @@ function changeValueFunction (algo) {
   switch (algo) {
     case 'uniqueCellCounter':
       hexOverlay.options.value = uniqueCellCounter;
-      console.log('uniqueCellCounter');
+      // console.log('uniqueCellCounter');
       break;
     case 'sumCellCounter':
       hexOverlay.options.value = sumCellCounter;
-      console.log('sumCellCounter');
+      // console.log('sumCellCounter');
       break;
     case 'logSumCellCounter':
       hexOverlay.options.value = logSumCellCounter;
-      console.log('logSumCellCounter');
+      // console.log('logSumCellCounter');
       break;
     case 'sumScaledCounter':
       hexOverlay.options.value = sumScaledCounter;
-      console.log('sumScaledCounter');
+      // console.log('sumScaledCounter');
       break;
     default:
       hexOverlay.options.value = function(d) { return d.length; }
-      console.log('defaultCellCounter');
+      // console.log('defaultCellCounter');
       break;
     }
 
     // var data = hexOverlay._data;
-    hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
+    // hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
     hexOverlay.initialize(hexOverlay.options);
     hexOverlay.data(poi);
     hexOverlay._redraw();
@@ -94,7 +94,6 @@ function sumCellCounter(d) {
 }
 
 function logSumCellCounter(d) {
-  // console.log(Math.log(d.length));
   return 10.0 * Math.log(d.length);
 }
 
