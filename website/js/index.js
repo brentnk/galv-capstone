@@ -8,12 +8,14 @@ function handleSearch(e) {
 }
 
 var map = L.map("map-canvas",{center:[39.7047, -105.0814],zoom:11});
-L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',{ attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }).addTo(map);
+L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  { attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }
+).addTo(map);
 
 var valueAlgorithm = 'sumScaledCounter';
 var options = {
-  radiusRange: [7,7],
-  radius: 7,
+  radiusRange: [9,9],
+  radius: 9,
   opacity: 0.47,
   lng: function(d){ return d[1]; },
   lat: function(d){ return d[2]; },
@@ -22,11 +24,27 @@ var options = {
   valueCeil: undefined
 }
 
+var colorScales = [
+  d3.interpolateViridis,
+  d3.interpolateInferno,
+  d3.interpolateMagma
+  // d3.interpolatePlasma,
+  // d3.interpolateWarm,
+  // d3.interpolateCool,
+  // d3.interpolateRainbow
+]
+
 var hexOverlay = L.hexbinLayer(options);
-hexOverlay.addTo(map);
+hexOverlay.addTo(map).hexClick(function(d) {
+  currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
+  console.log('hex click!', currentColorScaleIndex)
+  hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
+  hexOverlay._redraw();
+});
 
 var poi = [];
 var totals = {}
+var currentColorScaleIndex = 0
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
 
@@ -42,6 +60,15 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill', '#2A9D8F')
     .attr('fill-opacity', .37)
 }, {zoomDraw:true})
+
+function changeDataLayer() {
+  d3.select('#datalayers').selectAll('button')
+    .data(d3.keys(totals))
+    .enter()
+    .append('button')
+    .classed('btn btn-defualt', true)
+    .text(function(d){ return d + ' ' + totals[d]; })
+}
 
 function changeValueFunction (algo) {
   switch (algo) {
@@ -107,7 +134,7 @@ function sumScaledCounter(d) {
   },0)
   // console.log(poi.length, d.length, v / s, poi.length * (v / s))
   if(v==0 || s==0) {console.out('v,s', v, s);}
-  return v / s;
+  return v * s;
 }
 
 function searchTerms(terms) {
@@ -118,7 +145,9 @@ function searchTerms(terms) {
       totals[term] = data[term].length
     });
 
-    hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
+    changeDataLayer()
+
+    hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
     hexOverlay.data(poi)
   });
 }

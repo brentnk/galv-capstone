@@ -4,6 +4,8 @@ import numpy as np
 from multiprocessing import Pool
 import functools
 
+from sklearn.cluster import MeanShift
+
 def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
     aql = ( "for doc in near('radar', @latt, @lonn, 100, @meters) filter doc.keyword == @keyword && "
             "doc.name == @name && doc.type == @type return doc")
@@ -14,7 +16,7 @@ def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
     return qres.response['result']
 
 def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True,
-    upsample=0):
+    upsample=0, make_clusters=True):
     basetermdict = {'type': '', 'keyword': '', 'name': ''}
     params = {'location': '{0},{1}'.format(*coords),
               'radius': radius,
@@ -52,29 +54,40 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
                 doc.save()
             print('cached: complete')
 
+    if make_clusters:
+        collection = cluster_results(collection)
 
     if upsample > 0:
         pool = Pool(8)
-        print('upsampling collection {}...'.format(len(collection)))
-        pp = functools.partial(rayleigh_upsample,mean_shift=.0105, samples=upsample, mean=3)
-        # print(type(collection))
-        tag = params['keyword'] if params['keyword'] != '' else params['type']
-        collection = [[tag] + x[1:] for x in collection]
-        ups = pool.map(pp, np.array([x[1:] for x in collection]))
+        print('upsampling {} results...'.format(len(collection)))
+        pp = functools.partial(rayleigh_upsample,mean_shift=.0105, samples=upsample, mean=4)
+        # collection = [[tag] + x[1:] for x in collection] # add tag to each point
+        # ups = pool.map(pp, np.array([x[1:] for x in collection]))
+        ups = pool.map(pp, np.array(collection))
         for u in ups:
             for p in u:
-                # print(params['keyword'],len(params['keyword']),params['keyword'] != '', params['type'])
-                p.insert(0,tag)
-                p.append(1.0 / len(u))
                 collection.append(p)
 
+    # tag collection
+    tag = params['keyword'] if params['keyword'] != '' else params['type']
+    print('tagging collection {}'.format(tag))
+    for point in collection:
+        point.insert(0,tag)
+        point.append(1.0 / (len(u) * .5))
+
     return collection
+
+def cluster_results(results):
+    model = MeanShift(bandwidth=0.015, cluster_all=False)
+    print(results[0])
+    res = model.fit(np.array(results)[:,1:].astype(float))
+    print('cluster centers shape: {}'.format(res.cluster_centers_.shape))
+    return res.cluster_centers_.tolist()
 
 def rayleigh_upsample(loc=np.array([0.0,0.0]), mean_shift=1, samples=20, mean=2):
         magnitude = np.random.rayleigh(mean, size=samples) * (mean_shift * 1.0 / mean)
         direction = np.random.rand(samples) * 2 * 3.141559
         return (np.atleast_2d(loc) + pol2cart(magnitude, direction)).tolist()
-
 
 def parse_gresults(results, params):
     collection = []

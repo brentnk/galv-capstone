@@ -21,6 +21,7 @@
     "leaflet-hexbin-2": "*",
     "leaflet-d3-svg-overlay": "^2.2.0",
     "d3-interpolate": "^1.1.0",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "bootstrap": "^3.3.7"
   }
 }
