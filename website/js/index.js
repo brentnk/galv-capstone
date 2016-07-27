@@ -58,9 +58,11 @@ hexOverlay.addTo(map)
 ;
 
 var poi = [];
-var totals = {}
-var currentColorScaleIndex = 0
+var totals = new Map();
+var currentColorScaleIndex = 0;
 var labelFilter = new Set();
+var hexValueCounts = [];
+var hexLayerCounts = new Map();
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
   console.log(proj.scale)
@@ -74,7 +76,7 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('stroke-width',.2)
     .attr('fill', '#2A9D8F')
     .attr('fill-opacity', .37)
-}, {zoomDraw:true})
+}, {zoomDraw:true});
 
 function modFilter(a) {
   console.log('mod filter');
@@ -95,13 +97,75 @@ function poiFilter(a) {
   return data
 }
 
+function calculateHexagonValueCounts(hexOverlay) {
+  console.log('Hexagon count:', hexOverlay.hexagons[0].length);
+  return hexOverlay.hexagons[0].map((path) => {
+    return _.countBy(path.__data__, (elem) => elem.d[0]);
+  });
+}
+
+function calculateHexagonLayerCounts(hexValueCounts, totals) {
+  console.log('Layer count...');
+  var temp = {};
+  for (var k of totals.keys()) {
+    temp[k] = _.filter(hexValueCounts, (elem) => k in elem ).length;
+  }
+  return temp;
+}
+
+function pairwiseLayerDifferences(hexValueCounts, hexLayerCounts) {
+  return [...enumerateLayerPairs()].map( (p) => {
+    return _layerDifference(hexValueCounts, p[0], p[1]);
+  });
+}
+
+function _layerDifference(hexValueCounts, term1, term2) {
+  var overlap = 0;
+
+  if (!(totals.has(term1) && totals.has(term2))) {
+    console.log(`Layer does not exist ->
+      ${term1}-${totals.has(term1)} ${term2}-${totals.has(term2)}`);
+    return [-1,-1];
+  }
+
+  var t1overlap = [0, hexLayerCounts[term1]];
+  var t2overlap = [0, hexLayerCounts[term2]];
+
+  for (var i = 0; i < hexValueCounts.length; i++) {
+    if (term1 in hexValueCounts[i] && term2 in hexValueCounts[i]) {
+      overlap += 1
+      t1overlap[0] += hexValueCounts[i][term1];
+      t2overlap[0] += hexValueCounts[i][term2];
+    }
+  }
+  return [overlap, t1overlap, t2overlap];
+}
+
+
+
+function* enumerateLayerPairs() {
+  if (totals.size < 2) {
+    console.log('therr be a size problem mateyyyyy har har har');
+    return;
+  }
+  var keys = [...totals.keys()];
+
+  for(var i = 0; i < totals.size - 1; i++) {
+    for (var j = i + 1; j < totals.size; j++) {
+      // console.log(`${keys[i]} -- ${keys[j]}`);
+      yield [keys[i], keys[j]];
+    }
+  }
+
+}
+
 function changeDataLayer() {
   d3.select('#datalayers').selectAll('button')
-    .data(d3.keys(totals))
+    .data(totals.keys())
     .enter()
     .append('button')
     .classed('btn btn-defualt', true)
-    .text(function(d){ return d + ' ' + totals[d]; })
+    .text(function(d){ return d + ' ' + totals.get(d); })
     // .attr('onClick', function(d) {return 'modFilter("' + d + '")';});
 }
 
@@ -165,7 +229,7 @@ function sumScaledCounter(d) {
     new Set()).size;
   var v = d.reduce( function(a,b){
     // console.log(b.d)
-    return b.d.length < 4? (1.0 / totals[b.d[0]]) + a: b.d[3] + a ;
+    return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
   },0)
   // console.log(poi.length, d.length, v / s, poi.length * (v / s))
   if(v==0 || s==0) {console.out('v,s', v, s);}
@@ -177,12 +241,15 @@ function searchTerms(terms) {
     console.log(data)
     data.terms.forEach( function(term) {
       poi = poi.concat(data[term]);
-      totals[term] = data[term].length
+      totals.set(term, data[term].length);
     });
 
     changeDataLayer()
 
     hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
-    hexOverlay.data(poiFilter())
+    hexOverlay.data(poiFilter());
+
+    hexValueCounts = calculateHexagonValueCounts(hexOverlay);
+    hexLayerCounts = calculateHexagonLayerCounts(hexValueCounts, totals);
   });
 }
