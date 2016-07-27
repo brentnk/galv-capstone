@@ -35,19 +35,34 @@ var colorScales = [
 ]
 
 var hexOverlay = L.hexbinLayer(options);
-hexOverlay.addTo(map).hexClick(function(d) {
+hexOverlay.addTo(map)
+.hexClick(function(d) {
   currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
-  console.log('hex click!', currentColorScaleIndex)
   hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
   hexOverlay._redraw();
-});
+})
+// .hexMouseOver(function(d) {
+//     d3.select(this)
+//       .style("stroke-width", 1.5)
+//       .style("opacity", 0.90)
+//     d3.select("#json-print")
+//       .style("color", "#ccc")
+//       .text(JSON.stringify(d,undefined, 2));
+// })
+// .hexMouseOut(function(d) {
+//   d3.select(this)
+//     .style("stroke-width", null);
+//   d3.select("#json-print")
+//     .style("color", null)
+//     .text(JSON.stringify(d,undefined, 2));)
+;
 
 var poi = [];
 var totals = {}
 var currentColorScaleIndex = 0
+var labelFilter = new Set();
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
-
   console.log(proj.scale)
   var poiUpd = sel.selectAll('circle').data(poi)
     .enter()
@@ -61,6 +76,25 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill-opacity', .37)
 }, {zoomDraw:true})
 
+function modFilter(a) {
+  console.log('mod filter');
+  if (labelFilter.has(a)) {
+    labelFilter.delete(a);
+  } else {
+    labelFilter.add(a);
+  }
+
+  hexOverlay.data(poiFilter());
+  hexOverlay._redraw();
+}
+
+function poiFilter(a) {
+  var data = _.reject(poi, function(v) {
+    return labelFilter.has(v[0]);
+  });
+  return data
+}
+
 function changeDataLayer() {
   d3.select('#datalayers').selectAll('button')
     .data(d3.keys(totals))
@@ -68,6 +102,7 @@ function changeDataLayer() {
     .append('button')
     .classed('btn btn-defualt', true)
     .text(function(d){ return d + ' ' + totals[d]; })
+    // .attr('onClick', function(d) {return 'modFilter("' + d + '")';});
 }
 
 function changeValueFunction (algo) {
@@ -97,7 +132,7 @@ function changeValueFunction (algo) {
     // var data = hexOverlay._data;
     // hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
     hexOverlay.initialize(hexOverlay.options);
-    hexOverlay.data(poi);
+    hexOverlay.data(poiFilter());
     hexOverlay._redraw();
 }
 
@@ -105,7 +140,7 @@ function changeHexScale(amt) {
   var data = hexOverlay._data;
   hexOverlay.initialize(hexOverlay.options);
   hexOverlay.data(data);
-  hexOverlay._redraw()
+  hexOverlay._redraw();
 }
 
 function uniqueCellCounter(d){
@@ -148,6 +183,6 @@ function searchTerms(terms) {
     changeDataLayer()
 
     hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
-    hexOverlay.data(poi)
+    hexOverlay.data(poiFilter())
   });
 }

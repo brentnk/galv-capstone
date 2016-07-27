@@ -64,6 +64,8 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
         # collection = [[tag] + x[1:] for x in collection] # add tag to each point
         # ups = pool.map(pp, np.array([x[1:] for x in collection]))
         ups = pool.map(pp, np.array(collection))
+        pool.close()
+        pool.join()
         for u in ups:
             for p in u:
                 collection.append(p)
@@ -73,7 +75,7 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     print('tagging collection {}'.format(tag))
     for point in collection:
         point.insert(0,tag)
-        point.append(1.0 / (len(u) * .5))
+        point.append(1.0 / (len(u) * .75))
 
     return collection
 
