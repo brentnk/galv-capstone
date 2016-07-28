@@ -7,7 +7,12 @@ function handleSearch(e) {
   }
 }
 
-var map = L.map("map-canvas",{center:[39.7047, -105.0814],zoom:11});
+var map = L.map("map-canvas",{
+  center:[39.7047, -105.0814],
+  zoom:11,
+  minZoom:10,
+  maxZoom:12
+});
 L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
   { attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }
 ).addTo(map);
@@ -91,10 +96,7 @@ function modFilter(a) {
 }
 
 function poiFilter(a) {
-  var data = _.reject(poi, function(v) {
-    return labelFilter.has(v[0]);
-  });
-  return data
+  return _.reject(poi, (d) => labelFilter.has(d[0]));
 }
 
 function calculateHexagonValueCounts(hexOverlay) {
@@ -156,7 +158,6 @@ function* enumerateLayerPairs() {
       yield [keys[i], keys[j]];
     }
   }
-
 }
 
 function changeDataLayer() {
@@ -166,35 +167,27 @@ function changeDataLayer() {
     .append('button')
     .classed('btn btn-defualt', true)
     .text(function(d){ return d + ' ' + totals.get(d); })
-    // .attr('onClick', function(d) {return 'modFilter("' + d + '")';});
 }
 
 function changeValueFunction (algo) {
   switch (algo) {
     case 'uniqueCellCounter':
       hexOverlay.options.value = uniqueCellCounter;
-      // console.log('uniqueCellCounter');
       break;
     case 'sumCellCounter':
       hexOverlay.options.value = sumCellCounter;
-      // console.log('sumCellCounter');
       break;
     case 'logSumCellCounter':
       hexOverlay.options.value = logSumCellCounter;
-      // console.log('logSumCellCounter');
       break;
     case 'sumScaledCounter':
       hexOverlay.options.value = sumScaledCounter;
-      // console.log('sumScaledCounter');
       break;
     default:
       hexOverlay.options.value = function(d) { return d.length; }
-      // console.log('defaultCellCounter');
       break;
     }
 
-    // var data = hexOverlay._data;
-    // hexOverlay.colorScale(d3.scaleSequential(d3.interpolateViridis))
     hexOverlay.initialize(hexOverlay.options);
     hexOverlay.data(poiFilter());
     hexOverlay._redraw();
@@ -224,14 +217,10 @@ function logSumCellCounter(d) {
 }
 
 function sumScaledCounter(d) {
-  var s = d.reduce(function(a, b){
-    return a.add(b.d[0])},
-    new Set()).size;
+  var s = uniqueCellCounter(d);
   var v = d.reduce( function(a,b){
-    // console.log(b.d)
     return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
   },0)
-  // console.log(poi.length, d.length, v / s, poi.length * (v / s))
   if(v==0 || s==0) {console.out('v,s', v, s);}
   return v * s;
 }
