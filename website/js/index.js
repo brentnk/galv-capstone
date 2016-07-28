@@ -14,7 +14,7 @@ L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
 
 var valueAlgorithm = 'sumScaledCounter';
 var options = {
-  radiusRange: [9,9],
+  radiusRange: [5,9],
   radius: 9,
   opacity: 0.47,
   lng: function(d){ return d[1]; },
@@ -128,17 +128,25 @@ function _layerDifference(hexValueCounts, term1, term2) {
     return [-1,-1];
   }
 
-  var t1overlap = [0, hexLayerCounts[term1]];
-  var t2overlap = [0, hexLayerCounts[term2]];
+  var t1overlap = [term1, 0, hexLayerCounts[term1]];
+  var t2overlap = [term2, 0, hexLayerCounts[term2]];
+
+  var bcDistance = 0;
 
   for (var i = 0; i < hexValueCounts.length; i++) {
     if (term1 in hexValueCounts[i] && term2 in hexValueCounts[i]) {
       overlap += 1
-      t1overlap[0] += hexValueCounts[i][term1];
-      t2overlap[0] += hexValueCounts[i][term2];
+      t1overlap[1] += hexValueCounts[i][term1];
+      t2overlap[1] += hexValueCounts[i][term2];
+
+      bcDistance += Math.sqrt(hexValueCounts[i][term1] * hexValueCounts[i][term2]);
     }
   }
-  return [overlap, t1overlap, t2overlap];
+  bcDistance = -1 * Math.log(bcDistance);
+  return {'overlap':overlap,
+          't1overlap':t1overlap,
+          't2overlap':t2overlap,
+          'bcDistance': bcDistance};
 }
 
 
