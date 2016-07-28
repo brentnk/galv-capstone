@@ -3,17 +3,21 @@
 <head>
     <title>Mr. Mapper</title>
 
-    <link rel="stylesheet" href="/bower/bootstrap/dist/css/bootstrap.min.css" media="screen" title="no title" charset="utf-8">
+    <link rel="stylesheet" href="/css/flatly.bootstrap.min.css" media="screen" title="no title" charset="utf-8">
     <style type="text/css">
-        html { height: 100% }
         body { height: 100%; margin: 0; padding: 0 }
         .wrapper { position: relative; min-height: 100%; }
         .searchbox { position: absolute;
           top:20px, left: 20px;
           padding-left: 60px;
           padding-top: 14px;
-          z-index: 99;}
-        #searchBox { font-size: xx-large }
+          z-index: 99;
+          width: 400px;
+
+        }
+        #searchBox {
+          font-size: xx-large;
+        }
         #map-canvas { height: 100vh }
     </style>
     <link href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css'
@@ -23,17 +27,17 @@
 </head>
 <body>
   <div class="wrapper">
-    <div class="searchbox">
+    <div class="searchbox row">
       <div>
         <input id='searchBox' type="text" name="searchTerms"
           placeholder="chipotle;hardware store;etc..." onkeypress="handleSearch(event)">
       </div>
       <div id="json-print"></div>
-        <div class="options">
-          <button class="btn btn-default" onclick="changeValueFunction('uniqueCellCounter')">Unique</button>
-          <button class="btn btn-default" onclick="changeValueFunction('sumCellCounter')">Sum</button>
-          <button class="btn btn-default" onclick="changeValueFunction('logSumCellCounter')">LogSum</button>
-          <button class="btn btn-default" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
+        <div class="options row">
+          <button class="btn btn-default btn-sm" onclick="changeValueFunction('uniqueCellCounter')">Unique</button>
+          <button class="btn btn-default btn-sm" onclick="changeValueFunction('sumCellCounter')">Sum</button>
+          <button class="btn btn-default btn-sm" onclick="changeValueFunction('logSumCellCounter')">LogSum</button>
+          <button class="btn btn-default btn-sm" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
         </div>
         <div id="datalayers">
 

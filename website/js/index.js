@@ -96,6 +96,7 @@ function modFilter(a) {
 }
 
 function poiFilter(a) {
+  console.log('filtering collection...');
   return _.reject(poi, (d) => labelFilter.has(d[0]));
 }
 
@@ -198,7 +199,6 @@ function changeValueFunction (algo) {
 
     hexOverlay.initialize(hexOverlay.options);
     hexOverlay.data(poiFilter());
-    hexOverlay._redraw();
 }
 
 function changeHexScale(amt) {
