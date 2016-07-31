@@ -3,20 +3,17 @@
 <head>
     <title>Mr. Mapper</title>
 
-    <link rel="stylesheet" href="/css/flatly.bootstrap.min.css" media="screen" title="no title" charset="utf-8">
+    <link rel="stylesheet" href="/bower/bootstrap/dist/css/bootstrap.min.css" media="screen" title="no title" charset="utf-8">
     <style type="text/css">
         body { height: 100%; margin: 0; padding: 0 }
         .wrapper { position: relative; min-height: 100%; }
-        .searchbox { position: absolute;
-          top:20px, left: 20px;
-          padding-left: 60px;
-          padding-top: 14px;
+        .controlbox {
+          position: absolute;
+          top:20px;
+          left: 60px;
           z-index: 99;
-          width: 400px;
-
-        }
-        #searchBox {
-          font-size: xx-large;
+          width: 275px;
+          background-color: rgba(0, 0, 0, 0.5);
         }
         #map-canvas { height: 100vh }
     </style>
@@ -27,21 +24,27 @@
 </head>
 <body>
   <div class="wrapper">
-    <div class="searchbox row">
-      <div>
-        <input id='searchBox' type="text" name="searchTerms"
+    <div class="panel panel-primary controlbox">
+      <div class="input-group-lg">
+        <input id='searchBox' class="form-control" type="text" name="searchTerms"
           placeholder="chipotle;hardware store;etc..." onkeypress="handleSearch(event)">
       </div>
-      <div id="json-print"></div>
-        <div class="options row">
-          <button class="btn btn-default btn-sm" onclick="changeValueFunction('uniqueCellCounter')">Unique</button>
-          <button class="btn btn-default btn-sm" onclick="changeValueFunction('sumCellCounter')">Sum</button>
-          <button class="btn btn-default btn-sm" onclick="changeValueFunction('logSumCellCounter')">LogSum</button>
-          <button class="btn btn-default btn-sm" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
-        </div>
-        <div id="datalayers">
-
-        </div>
+      <div class="btn-group btn-group-justified options">
+        <a class="btn button-primary" role="button" onclick="changeValueFunction('uniqueCellCounter')">Unique</a>
+        <a class="btn button-primary" role="button" onclick="changeValueFunction('sumCellCounter')">Sum</a>
+      </div>
+      <div class="btn-group btn-group-justified options">
+        <a class="btn button-primary" role="button" onclick="changeValueFunction('logSumCellCounter')">LogSum</a>
+        <a class="btn button-primary" role="button" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</a>
+      </div>
+      <div id="datalayers">
+        <ul class="list-group">
+          <li v-for="layer in arr" class="list-group-item {{layer.active ? '' : 'disabled'}}" onclick="modFilter('{{ layer.term }}')">
+            {{ layer.term }}
+            <span class="badge">{{ layer.count }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
     <div id="map-canvas"></div>
   </div>
@@ -56,6 +59,7 @@
 <script src="https://d3js.org/d3-color.v1.min.js"></script>
 <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
 <script src="https://d3js.org/d3-scale.v1.min.js"></script>
+<script src="bower/vue/dist/vue.min.js"></script>
 <script src="js/index.js"></script>
 
 </body>

@@ -43,9 +43,8 @@ var hexOverlay = L.hexbinLayer(options);
 hexOverlay.addTo(map)
 .hexClick(function(d) {
   currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
-  hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
-  hexOverlay._redraw();
-})
+  hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]));
+});
 // .hexMouseOver(function(d) {
 //     d3.select(this)
 //       .style("stroke-width", 1.5)
@@ -64,10 +63,18 @@ hexOverlay.addTo(map)
 
 var poi = [];
 var totals = new Map();
+var totalsarr = [];
 var currentColorScaleIndex = 0;
 var labelFilter = new Set();
 var hexValueCounts = [];
 var hexLayerCounts = new Map();
+
+// Set up data bindings
+new Vue({
+  el: '#datalayers',
+  data: {arr:totalsarr}
+});
+
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
   console.log(proj.scale)
@@ -90,9 +97,7 @@ function modFilter(a) {
   } else {
     labelFilter.add(a);
   }
-
   hexOverlay.data(poiFilter());
-  hexOverlay._redraw();
 }
 
 function poiFilter(a) {
@@ -151,8 +156,6 @@ function _layerDifference(hexValueCounts, term1, term2) {
           't2overlap':t2overlap,
           'bcDistance': bcDistance};
 }
-
-
 
 function* enumerateLayerPairs() {
   if (totals.size < 2) {
@@ -239,6 +242,7 @@ function searchTerms(terms) {
     data.terms.forEach( function(term) {
       poi = poi.concat(data[term]);
       totals.set(term, data[term].length);
+      totalsarr.push({term:term, count:data[term].length, active:true});
     });
 
     changeDataLayer()

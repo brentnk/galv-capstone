@@ -8,7 +8,7 @@ app = Flask(__name__, static_url_path='')
 @app.route('/home')
 @app.route('/')
 def home():
-    return render_template('./index.html')
+    return send_from_directory('templates', 'index.html')
 
 @app.route('/hexbin')
 def hx():
