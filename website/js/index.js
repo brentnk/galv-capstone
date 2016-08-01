@@ -7,18 +7,13 @@ function handleSearch(e) {
   }
 }
 
-var map = L.map("map-canvas",{
+var mapOptions = {
   center:[39.7047, -105.0814],
   zoom:11,
   minZoom:10,
   maxZoom:12
-});
-L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  { attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }
-).addTo(map);
-
-var valueAlgorithm = 'sumScaledCounter';
-var options = {
+}
+var hexbinOptions = {
   radiusRange: [9,9],
   radius: 9,
   opacity: 0.47,
@@ -29,18 +24,41 @@ var options = {
   valueCeil: undefined
 }
 
+var cb = {};
+cb.state.poi = [];
+cb.state.totals = [];
+cb.state.totalsarr = [];
+cb.state.currentColorScaleIndex = 0;
+cb.state.labelFilter = [];
+cb.state.hexValueCounts = [];
+cb.state.hexLayerCounts = new Map();
+cb.state.idf_weight = 1.0;
+cb.state.valueAlgorithmString = 'sumScaledCounter';
+
+cb.mapOptions = mapOptions;
+cb.hexbinOptions = hexbinOptions;
+
+cb.map = L.map("map-canvas", cb.mapOptions);
+cb.mapBaseLayer   = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+{ attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }
+)
+cb.state.hexOverlay = L.hexbinLayer(cb.hexbinOptions);
+
+cb.state.hexOverlay.addTo(map)
+  .hexClick(function(d) {
+    currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
+    hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]));
+  });
+cb.mapBaseLayer.addTo(map);
+
+
+
 var colorScales = [
   d3.interpolateViridis,
   d3.interpolateInferno,
   d3.interpolateMagma
 ]
 
-var hexOverlay = L.hexbinLayer(options);
-hexOverlay.addTo(map)
-.hexClick(function(d) {
-  currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
-  hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]));
-});
 // .hexMouseOver(function(d) {
 //     d3.select(this)
 //       .style("stroke-width", 1.5)
@@ -57,16 +75,7 @@ hexOverlay.addTo(map)
 //     .text(JSON.stringify(d,undefined, 2));)
 ;
 
-var cb = {};
-cb.poi = [];
-cb.totals = new Map();
-cb.totalsarr = [];
-cb.currentColorScaleIndex = 0;
-cb.labelFilter = new Set();
-cb.hexValueCounts = [];
-cb.hexLayerCounts = new Map();
 
-var IDF_WEIGHT = 1.0;
 
 // Set up data bindings
 v1 = new Vue({
@@ -93,11 +102,11 @@ v2 = new Vue({
 });
 
 v = Vue({
-  el: '.controlbox',
+  el: '#controlbox',
   data: {
-    cb: cb    
+    con: cb.state
   }
-})
+});
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
   console.log(proj.scale)
@@ -113,78 +122,75 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill-opacity', .37)
 }, {zoomDraw:true});
 
-function modFilter(term) {
+cb.refreshData = () => this.state.hexOverlay.data(this.poiFilter());
+
+cb.modFilter = function(term) {
   console.log('mod filter', term);
-  if (labelFilter.has(term)) {
-    labelFilter.delete(term);
+  if (this.state.labelFilter.includes(term)) {
+    this.state.labelFilter = _.reject((t) => t == term);
   } else {
-    labelFilter.add(term);
+    this.state.labelFilter.push(term);
   }
-  hexOverlay.data(poiFilter());
+  this.state.hexOverlay.data(cb.poiFilter());
 }
 
-function modIdfWeight(val, hexOverlay) {
-  console.log('mod idf_weight', IDF_WEIGHT, val);
-  IDF_WEIGHT = IDF_WEIGHT + val;
+cb.modIdfWeight = function (val) {
+  this.state.idf_weight = this.state.idf_weight + val;
 
-  changeValueFunction('sumScaledCounter');
+  this.changeValueFunction('sumScaledCounter');
 }
 
-function poiFilter(a) {
-  // console.log('filtering collection...');
-  return _.reject(poi, (d) => labelFilter.has(d[0]));
+cb.poiFilter = function (a) {
+  return _.reject(poi, (d) => this.state.labelFilter.includes(d[0]));
 }
 
-function calculateHexValues(hexOverlay) {
-  console.log('calculating hexagon values...');
-  return hexOverlay.hexagons[0].map((path) => {
-    return { point: [path.__data__.i,path.__data__.j], value: hexOverlay.options.value(path.__data__) };
+cb.calculateHexValues = function () {
+  return this.state.hexOverlay.hexagons[0].map((path) => {
+    return { point: [path.__data__.i,path.__data__.j], value: this.state.hexOverlay.options.value(path.__data__) };
   });
 }
 
-function calculateHexagonValueCounts(hexOverlay) {
-  console.log('Hexagon count:', hexOverlay.hexagons[0].length);
-  return hexOverlay.hexagons[0].map((path) => {
+cb.calculateHexagonValueCounts = function () {
+  return this.state.hexOverlay.hexagons[0].map((path) => {
     return _.countBy(path.__data__, (elem) => elem.d[0]);
   });
 }
 
-function calculateHexagonLayerCounts(hexValueCounts, totals) {
-  console.log('Layer count...');
+cb.calculateHexagonLayerCounts = function () {
   var temp = {};
-  for (var k of totals.keys()) {
-    temp[k] = _.filter(hexValueCounts, (elem) => k in elem ).length;
+  for (var k of this.state.totals.keys()) {
+    temp[k] = _.filter(this.state.hexValueCounts, (elem) => k in elem ).length;
   }
   return temp;
 }
 
-function pairwiseLayerDifferences(hexValueCounts, hexLayerCounts) {
-  return [...enumerateLayerPairs()].map( (p) => {
-    return _layerDifference(hexValueCounts, p[0], p[1]);
+cb.pairwiseLayerDifferences = function () {
+  return [...this.enumerateLayerPairs()].map( (p) => {
+    return this._layerDifference(this.state.hexValueCounts, p[0], p[1]);
   });
 }
 
-function _layerDifference(hexValueCounts, term1, term2) {
+cb._layerDifference(term1, term2) {
   var overlap = 0;
 
-  if (!(totals.has(term1) && totals.has(term2))) {
+  if (!(this.state.totals.includes(term1) && this.state.totals.includes(term2))) {
     console.log(`Layer does not exist ->
-      ${term1}-${totals.has(term1)} ${term2}-${totals.has(term2)}`);
+      ${term1}-${this.state.totals.includes(term1)} ${term2}-${this.state.totals.includes(term2)}`);
     return [-1,-1];
   }
 
-  var t1overlap = [term1, 0, hexLayerCounts[term1]];
-  var t2overlap = [term2, 0, hexLayerCounts[term2]];
+  var t1overlap = [term1, 0, this.state.hexLayerCounts[term1]];
+  var t2overlap = [term2, 0, this.state.hexLayerCounts[term2]];
 
   var bcDistance = 0;
 
-  for (var i = 0; i < hexValueCounts.length; i++) {
-    if (term1 in hexValueCounts[i] && term2 in hexValueCounts[i]) {
+  for (var i = 0; i < this.state.hexValueCounts.length; i++) {
+    if (term1 in this.state.hexValueCounts[i] && term2 in this.state.hexValueCounts[i]) {
       overlap += 1
-      t1overlap[1] += hexValueCounts[i][term1];
-      t2overlap[1] += hexValueCounts[i][term2];
+      t1overlap[1] += this.state.hexValueCounts[i][term1];
+      t2overlap[1] += this.state.hexValueCounts[i][term2];
 
-      bcDistance += Math.sqrt(hexValueCounts[i][term1] * hexValueCounts[i][term2]);
+      bcDistance += Math.sqrt(this.state.hexValueCounts[i][term1] * this.state.hexValueCounts[i][term2]);
     }
   }
   bcDistance = -1 * Math.log(bcDistance);
@@ -194,60 +200,45 @@ function _layerDifference(hexValueCounts, term1, term2) {
           'bcDistance': bcDistance};
 }
 
-function* enumerateLayerPairs() {
-  if (totals.size < 2) {
+cb.enumerateLayerPairs = function* () {
+  if (this.totals.size < 2) {
     console.log('therr be a size problem mateyyyyy har har har');
     return;
   }
-  var keys = [...totals.keys()];
+  var keys = [...this.totals.keys()];
 
-  for(var i = 0; i < totals.size - 1; i++) {
-    for (var j = i + 1; j < totals.size; j++) {
+  for(var i = 0; i < this.totals.size - 1; i++) {
+    for (var j = i + 1; j < this.totals.size; j++) {
       // console.log(`${keys[i]} -- ${keys[j]}`);
       yield [keys[i], keys[j]];
     }
   }
 }
 
-function changeDataLayer() {
-  d3.select('#datalayers').selectAll('button')
-    .data(totals.keys())
-    .enter()
-    .append('button')
-    .classed('btn btn-defualt', true)
-    .text(function(d){ return d + ' ' + totals.get(d); })
-}
-
-function changeValueFunction (algo) {
+cb.changeValueFunction = function (algo) {
   switch (algo) {
     case 'uniqueCellCounter':
-      hexOverlay.options.value = uniqueCellCounter;
+      this.state.hexOverlay.options.value = uniqueCellCounter;
       break;
     case 'sumCellCounter':
-      hexOverlay.options.value = sumCellCounter;
+      this.state.hexOverlay.options.value = sumCellCounter;
       break;
     case 'logSumCellCounter':
-      hexOverlay.options.value = logSumCellCounter;
+      this.state.hexOverlay.options.value = logSumCellCounter;
       break;
     case 'sumScaledCounter':
-      hexOverlay.options.value = sumScaledCounter(IDF_WEIGHT);
+      this.state.hexOverlay.options.value = sumScaledCounter(IDF_WEIGHT);
       break;
     default:
-      hexOverlay.options.value = function(d) { return d.length; }
+      this.state.hexOverlay.options.value = function(d) { return d.length; }
       break;
     }
 
-    hexOverlay.initialize(hexOverlay.options);
-    hexOverlay.data(poiFilter());
+    this.state.hexOverlay.initialize(this.state.hexOverlay.options);
+    this.refreshData();
 }
 
-function changeHexScale(amt) {
-  var data = hexOverlay._data;
-  hexOverlay.initialize(hexOverlay.options);
-  hexOverlay.data(data);
-}
-
-function uniqueCellCounter(d){
+cb.valueFunctions.uniqueCellCounter = function(d){
   // console.log(d);
   var s = d.reduce(function(a, b){
     return a.add(b.d[0])},
@@ -255,37 +246,34 @@ function uniqueCellCounter(d){
   return s;
 }
 
-function sumCellCounter(d) {
+cb.valueFunctions.sumCellCounter = function(d) {
   return d.length;
 }
 
-function logSumCellCounter(d) {
+cb.valueFunctions.logSumCellCounter = function(d) {
   return 10.0 * Math.log(d.length);
 }
 
-function sumScaledCounter(idfweight) {
+cb.valueFunctions.sumScaledCounter = function(idfweight) {
   return function(d) {
-    var s = uniqueCellCounter(d);
+    var s = cb.valueFunctions.uniqueCellCounter(d);
     var v = d.reduce( function(a,b){
-      return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
+      return b.d.length < 4? (1.0 / this.state.totals.get(b.d[0])) + a: b.d[3] + a ;
     },0)
     return v * Math.pow(s, idfweight);
   }
 }
-function searchTerms(terms) {
 
+cb.searchTerms = function (terms) {
   d3.json('/api/radar/' + terms, function(data) {
-    console.log(data)
     data.terms.forEach( function(term) {
-      poi = poi.concat(data[term]);
-      totals.set(term, data[term].length);
+      this.state.poi = this.state.poi.concat(data[term]);
       totalsarr.push({term:term, count:data[term].length, active:true});
     });
+    cb.state.totals = _.countBy((x) => x[0]);
 
-    changeDataLayer()
-
-    hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
-    hexOverlay.data(poiFilter());
+    cb.state.hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]))
+    cb.state.hexOverlay.data(cb.poiFilter());
 
     hexValueCounts = calculateHexagonValueCounts(hexOverlay);
     hexLayerCounts = calculateHexagonLayerCounts(hexValueCounts, totals);
