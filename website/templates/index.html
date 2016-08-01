@@ -24,26 +24,47 @@
 </head>
 <body>
   <div class="wrapper">
-    <div class="panel panel-primary controlbox">
-      <div class="input-group-lg">
-        <input id='searchBox' class="form-control" type="text" name="searchTerms"
-          placeholder="chipotle;hardware store;etc..." onkeypress="handleSearch(event)">
-      </div>
-      <div class="btn-group btn-group-justified options">
-        <a class="btn button-primary" role="button" onclick="changeValueFunction('uniqueCellCounter')">Unique</a>
-        <a class="btn button-primary" role="button" onclick="changeValueFunction('sumCellCounter')">Sum</a>
-      </div>
-      <div class="btn-group btn-group-justified options">
-        <a class="btn button-primary" role="button" onclick="changeValueFunction('logSumCellCounter')">LogSum</a>
-        <a class="btn button-primary" role="button" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</a>
-      </div>
-      <div id="datalayers">
-        <ul class="list-group">
-          <li v-for="layer in arr" class="list-group-item {{layer.active ? '' : 'disabled'}}" onclick="modFilter('{{ layer.term }}')">
-            {{ layer.term }}
-            <span class="badge">{{ layer.count }}</span>
-          </li>
-        </ul>
+    <div class="panel panel-info controlbox">
+      <div class="panel-body">
+        <div class="input-group-lg">
+          <input id='searchBox' class="form-control" type="text" name="searchTerms"
+            placeholder="chipotle;hospital;etc..." onkeypress="handleSearch(event)">
+        </div>
+        <div class="btn-group btn-group-justified options">
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" onclick="changeValueFunction('uniqueCellCounter')">Unique</button>
+          </div>
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" onclick="changeValueFunction('sumCellCounter')">Sum</button>
+          </div>
+        </div>
+        <div class="btn-group btn-group-justified options">
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" onclick="changeValueFunction('logSumCellCounter')">LogSum</button>
+          </div>
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
+          </div>
+        </div>
+        <div id="idf-group" class="btn-group btn-group-justified options">
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" @click="modIdfWeight(-0.5)">IDF -</button>
+          </div>
+          <div class="btn-group" role="group">
+            <button id='idf-display' class="btn btn-info" >{{ IDF_WEIGHT }}</button>
+          </div>
+          <div class="btn-group" role="group">
+            <button class="btn btn-primary" @click="modIdfWeight(0.5)">IDF +</button>
+          </div>
+        </div>
+        <div id="datalayers">
+          <ul class="list-group">
+            <li v-for="layer in arr" class="list-group-item {{layer.active ? 'list-group-item-success' : 'list-group-item-danger'}}" @click="modFilterWrapper($index)">
+              {{ layer.term }}
+              <span class="badge">{{ layer.count }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
     <div id="map-canvas"></div>

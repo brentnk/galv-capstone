@@ -19,7 +19,7 @@ L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
 
 var valueAlgorithm = 'sumScaledCounter';
 var options = {
-  radiusRange: [5,9],
+  radiusRange: [9,9],
   radius: 9,
   opacity: 0.47,
   lng: function(d){ return d[1]; },
@@ -33,10 +33,6 @@ var colorScales = [
   d3.interpolateViridis,
   d3.interpolateInferno,
   d3.interpolateMagma
-  // d3.interpolatePlasma,
-  // d3.interpolateWarm,
-  // d3.interpolateCool,
-  // d3.interpolateRainbow
 ]
 
 var hexOverlay = L.hexbinLayer(options);
@@ -61,20 +57,47 @@ hexOverlay.addTo(map)
 //     .text(JSON.stringify(d,undefined, 2));)
 ;
 
-var poi = [];
-var totals = new Map();
-var totalsarr = [];
-var currentColorScaleIndex = 0;
-var labelFilter = new Set();
-var hexValueCounts = [];
-var hexLayerCounts = new Map();
+var cb = {};
+cb.poi = [];
+cb.totals = new Map();
+cb.totalsarr = [];
+cb.currentColorScaleIndex = 0;
+cb.labelFilter = new Set();
+cb.hexValueCounts = [];
+cb.hexLayerCounts = new Map();
+
+var IDF_WEIGHT = 1.0;
 
 // Set up data bindings
-new Vue({
+v1 = new Vue({
   el: '#datalayers',
-  data: {arr:totalsarr}
+  data: { arr:totalsarr },
+  // methods: { modFilterWrapper: ()=> console.log()}
+  methods: {
+    modFilterWrapper: (idx) => {
+      console.log('>>>>', idx);
+      v1.arr[idx].active = !v1.arr[idx].active;
+      modFilter(v1.arr[idx].term);
+    }
+  }
 });
 
+v2 = new Vue({
+  el: '#idf-group',
+  data: { IDF_WEIGHT:IDF_WEIGHT },
+  methods: {
+    modIdfWeight: (w) => {
+      modIdfWeight(w, hexOverlay);
+    }
+  }
+});
+
+v = Vue({
+  el: '.controlbox',
+  data: {
+    cb: cb    
+  }
+})
 
 var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
   console.log(proj.scale)
@@ -90,19 +113,33 @@ var poiOverlay = L.d3SvgOverlay(function(sel, proj) {
     .attr('fill-opacity', .37)
 }, {zoomDraw:true});
 
-function modFilter(a) {
-  console.log('mod filter');
-  if (labelFilter.has(a)) {
-    labelFilter.delete(a);
+function modFilter(term) {
+  console.log('mod filter', term);
+  if (labelFilter.has(term)) {
+    labelFilter.delete(term);
   } else {
-    labelFilter.add(a);
+    labelFilter.add(term);
   }
   hexOverlay.data(poiFilter());
 }
 
+function modIdfWeight(val, hexOverlay) {
+  console.log('mod idf_weight', IDF_WEIGHT, val);
+  IDF_WEIGHT = IDF_WEIGHT + val;
+
+  changeValueFunction('sumScaledCounter');
+}
+
 function poiFilter(a) {
-  console.log('filtering collection...');
+  // console.log('filtering collection...');
   return _.reject(poi, (d) => labelFilter.has(d[0]));
+}
+
+function calculateHexValues(hexOverlay) {
+  console.log('calculating hexagon values...');
+  return hexOverlay.hexagons[0].map((path) => {
+    return { point: [path.__data__.i,path.__data__.j], value: hexOverlay.options.value(path.__data__) };
+  });
 }
 
 function calculateHexagonValueCounts(hexOverlay) {
@@ -193,7 +230,7 @@ function changeValueFunction (algo) {
       hexOverlay.options.value = logSumCellCounter;
       break;
     case 'sumScaledCounter':
-      hexOverlay.options.value = sumScaledCounter;
+      hexOverlay.options.value = sumScaledCounter(IDF_WEIGHT);
       break;
     default:
       hexOverlay.options.value = function(d) { return d.length; }
@@ -208,7 +245,6 @@ function changeHexScale(amt) {
   var data = hexOverlay._data;
   hexOverlay.initialize(hexOverlay.options);
   hexOverlay.data(data);
-  hexOverlay._redraw();
 }
 
 function uniqueCellCounter(d){
@@ -227,16 +263,17 @@ function logSumCellCounter(d) {
   return 10.0 * Math.log(d.length);
 }
 
-function sumScaledCounter(d) {
-  var s = uniqueCellCounter(d);
-  var v = d.reduce( function(a,b){
-    return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
-  },0)
-  if(v==0 || s==0) {console.out('v,s', v, s);}
-  return v * s;
+function sumScaledCounter(idfweight) {
+  return function(d) {
+    var s = uniqueCellCounter(d);
+    var v = d.reduce( function(a,b){
+      return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
+    },0)
+    return v * Math.pow(s, idfweight);
+  }
 }
-
 function searchTerms(terms) {
+
   d3.json('/api/radar/' + terms, function(data) {
     console.log(data)
     data.terms.forEach( function(term) {
