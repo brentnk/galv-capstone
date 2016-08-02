@@ -171,6 +171,18 @@ function pairwiseLayerDifferences(hexValueCounts, hexLayerCounts) {
   });
 }
 
+function highlightHexagons(num) {
+  var hexrank = hexOverlay.hexagons[0].map((a) => +a.getAttribute('value'));
+  var top = hexrank.sort();
+  console.log(top.slice(-10));
+  d3.select('g').selectAll('path.hexbin-hexagon')
+    // .each((d)=>{console.log(d); return d;})
+    .filter((d) => hexOverlay.options.value(d) < top[0])
+    .attr('stroke', 'red')
+    .attr('stroke-width', '4');
+  // d3.select('g.hexagon').enter
+}
+
 function _layerDifference(hexValueCounts, term1, term2) {
   var overlap = 0;
 
