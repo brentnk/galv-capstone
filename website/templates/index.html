@@ -12,7 +12,7 @@
           top:20px;
           left: 60px;
           z-index: 99;
-          width: 275px;
+          width: 245px;
           background-color: rgba(0, 0, 0, 0.5);
         }
         #map-canvas { height: 100vh }
@@ -24,8 +24,8 @@
 </head>
 <body>
   <div class="wrapper">
-    <div class="panel panel-info controlbox">
-      <div class="panel-body">
+    <div class="panel-info controlbox">
+      <div class="">
         <div class="input-group-lg">
           <input id='searchBox' class="form-control" type="text" name="searchTerms"
             placeholder="chipotle;hospital;etc..." onkeypress="handleSearch(event)">
@@ -46,22 +46,47 @@
             <button class="btn btn-primary" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
           </div>
         </div>
-        <div id="idf-group" class="btn-group btn-group-justified options">
-          <div class="btn-group" role="group">
-            <button class="btn btn-primary" @click="modIdfWeight(-0.5)">IDF -</button>
+        <div id="control-buttons">
+          <div class="btn-group btn-group-justified options">
+            <div class="btn-group" role="group">
+              <button class="btn btn-primary" @click="modIdfWeight(-1)">IDF -</button>
+            </div>
+            <div class="btn-group" role="group">
+              <button id='idf-display' class="btn btn-info" >{{ IDF_WEIGHT }}</button>
+            </div>
+            <div class="btn-group" role="group">
+              <button class="btn btn-primary" @click="modIdfWeight(1)">IDF +</button>
+            </div>
           </div>
-          <div class="btn-group" role="group">
-            <button id='idf-display' class="btn btn-info" >{{ IDF_WEIGHT }}</button>
-          </div>
-          <div class="btn-group" role="group">
-            <button class="btn btn-primary" @click="modIdfWeight(0.5)">IDF +</button>
+          <div class="btn-group btn-group-justified options">
+            <div class="btn-group" role="group">
+              <button class="btn btn-primary" @click="modUnqWeight(-1)">UNQ -</button>
+            </div>
+            <div class="btn-group" role="group">
+              <button id='idf-display' class="btn btn-info" >{{ UNQ_WEIGHT }}</button>
+            </div>
+            <div class="btn-group" role="group">
+              <button class="btn btn-primary" @click="modUnqWeight(1)">UNQ +</button>
+        </div>
           </div>
         </div>
         <div id="datalayers">
           <ul class="list-group">
-            <li v-for="layer in arr" class="list-group-item {{layer.active ? 'list-group-item-success' : 'list-group-item-danger'}}" @click="modFilterWrapper($index)">
+            <li v-for="layer in arr" class="list-group-item {{layer.active ? 'list-group-item-success' : 'list-group-item-danger'}}"
+              @click="modFilterWrapper($index)">
               {{ layer.term }}
               <span class="badge">{{ layer.count }}</span>
+            </li>
+          </ul>
+        </div>
+        <div id="pdist">
+          <ul class="list-group">
+            <li v-for="pd in pdists | orderBy 'bcDistance' -1" class="list-group-item">
+                <span>
+                  {{pd.t1overlap[0]}}
+                  {{pd.t2overlap[0]}}
+                </span>
+                <span class="badge">{{pd.bcDistance.toFixed(2)}}</span>
             </li>
           </ul>
         </div>

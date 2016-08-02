@@ -11,7 +11,7 @@ var map = L.map("map-canvas",{
   center:[39.7047, -105.0814],
   zoom:11,
   minZoom:10,
-  maxZoom:12
+  maxZoom:11
 });
 L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
   { attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>' }
@@ -19,8 +19,8 @@ L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
 
 var valueAlgorithm = 'sumScaledCounter';
 var options = {
-  radiusRange: [9,9],
-  radius: 9,
+  radiusRange: [11,11],
+  radius: 11,
   opacity: 0.47,
   lng: function(d){ return d[1]; },
   lat: function(d){ return d[2]; },
@@ -31,8 +31,7 @@ var options = {
 
 var colorScales = [
   d3.interpolateViridis,
-  d3.interpolateInferno,
-  d3.interpolateMagma
+  d3.interpolateInferno
 ]
 
 var hexOverlay = L.hexbinLayer(options);
@@ -58,21 +57,22 @@ hexOverlay.addTo(map)
 ;
 
 var cb = {};
-cb.poi = [];
-cb.totals = new Map();
-cb.totalsarr = [];
-cb.currentColorScaleIndex = 0;
-cb.labelFilter = new Set();
-cb.hexValueCounts = [];
-cb.hexLayerCounts = new Map();
+var poi = [];
+var totals = new Map();
+var totalsarr = [];
+var currentColorScaleIndex = 0;
+var labelFilter = new Set();
+var hexValueCounts = [];
+var hexLayerCounts = new Map();
+var pdistances = [];
 
 var IDF_WEIGHT = 1.0;
+var UNQ_WEIGHT = 1.0;
 
 // Set up data bindings
 v1 = new Vue({
   el: '#datalayers',
   data: { arr:totalsarr },
-  // methods: { modFilterWrapper: ()=> console.log()}
   methods: {
     modFilterWrapper: (idx) => {
       console.log('>>>>', idx);
@@ -83,19 +83,25 @@ v1 = new Vue({
 });
 
 v2 = new Vue({
-  el: '#idf-group',
-  data: { IDF_WEIGHT:IDF_WEIGHT },
+  el: '#control-buttons',
+  data: {
+    IDF_WEIGHT:IDF_WEIGHT,
+    UNQ_WEIGHT:UNQ_WEIGHT
+   },
   methods: {
     modIdfWeight: (w) => {
       modIdfWeight(w, hexOverlay);
+    },
+    modUnqWeight: (w) => {
+      modUnqWeight(w, hexOverlay);
     }
   }
 });
 
-v = Vue({
-  el: '.controlbox',
+v3 = new Vue({
+  el: '#pdist',
   data: {
-    cb: cb    
+    pdists: pdistances
   }
 })
 
@@ -124,9 +130,13 @@ function modFilter(term) {
 }
 
 function modIdfWeight(val, hexOverlay) {
-  console.log('mod idf_weight', IDF_WEIGHT, val);
   IDF_WEIGHT = IDF_WEIGHT + val;
-
+  v2.IDF_WEIGHT = IDF_WEIGHT;
+  changeValueFunction('sumScaledCounter');
+}
+function modUnqWeight(val, hexOverlay) {
+  UNQ_WEIGHT = UNQ_WEIGHT + val;
+  v2.UNQ_WEIGHT = UNQ_WEIGHT;
   changeValueFunction('sumScaledCounter');
 }
 
@@ -136,21 +146,18 @@ function poiFilter(a) {
 }
 
 function calculateHexValues(hexOverlay) {
-  console.log('calculating hexagon values...');
   return hexOverlay.hexagons[0].map((path) => {
     return { point: [path.__data__.i,path.__data__.j], value: hexOverlay.options.value(path.__data__) };
   });
 }
 
 function calculateHexagonValueCounts(hexOverlay) {
-  console.log('Hexagon count:', hexOverlay.hexagons[0].length);
   return hexOverlay.hexagons[0].map((path) => {
     return _.countBy(path.__data__, (elem) => elem.d[0]);
   });
 }
 
 function calculateHexagonLayerCounts(hexValueCounts, totals) {
-  console.log('Layer count...');
   var temp = {};
   for (var k of totals.keys()) {
     temp[k] = _.filter(hexValueCounts, (elem) => k in elem ).length;
@@ -230,7 +237,7 @@ function changeValueFunction (algo) {
       hexOverlay.options.value = logSumCellCounter;
       break;
     case 'sumScaledCounter':
-      hexOverlay.options.value = sumScaledCounter(IDF_WEIGHT);
+      hexOverlay.options.value = sumScaledCounter(UNQ_WEIGHT, IDF_WEIGHT);
       break;
     default:
       hexOverlay.options.value = function(d) { return d.length; }
@@ -248,7 +255,6 @@ function changeHexScale(amt) {
 }
 
 function uniqueCellCounter(d){
-  // console.log(d);
   var s = d.reduce(function(a, b){
     return a.add(b.d[0])},
     new Set()).size;
@@ -263,23 +269,27 @@ function logSumCellCounter(d) {
   return 10.0 * Math.log(d.length);
 }
 
-function sumScaledCounter(idfweight) {
+function sumScaledCounter(uniqueweight, idfweight) {
   return function(d) {
-    var s = uniqueCellCounter(d);
+    var u = uniqueCellCounter(d);
     var v = d.reduce( function(a,b){
-      return b.d.length < 4? (1.0 / totals.get(b.d[0])) + a: b.d[3] + a ;
+      return 1.0 / Math.pow(totals.get(b.d[0]), idfweight) + a;
     },0)
-    return v * Math.pow(s, idfweight);
+    return v * Math.pow(u, uniqueweight);
   }
 }
+
 function searchTerms(terms) {
 
   d3.json('/api/radar/' + terms, function(data) {
-    console.log(data)
     data.terms.forEach( function(term) {
-      poi = poi.concat(data[term]);
-      totals.set(term, data[term].length);
-      totalsarr.push({term:term, count:data[term].length, active:true});
+      if (data[term].length > 0) {
+        poi = poi.concat(data[term]);
+        totals.set(term, data[term].length);
+        totalsarr.push({term:term, count:data[term].length, active:true});
+      } else {
+        console.log(term, ' - blank response')
+      }
     });
 
     changeDataLayer()
@@ -289,5 +299,6 @@ function searchTerms(terms) {
 
     hexValueCounts = calculateHexagonValueCounts(hexOverlay);
     hexLayerCounts = calculateHexagonLayerCounts(hexValueCounts, totals);
+    v3.pdists = pairwiseLayerDifferences(hexValueCounts, hexLayerCounts);
   });
 }
