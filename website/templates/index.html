@@ -35,14 +35,6 @@
             <button class="btn btn-primary" onclick="changeValueFunction('uniqueCellCounter')">Unique</button>
           </div>
           <div class="btn-group" role="group">
-            <button class="btn btn-primary" onclick="changeValueFunction('sumCellCounter')">Sum</button>
-          </div>
-        </div>
-        <div class="btn-group btn-group-justified options">
-          <div class="btn-group" role="group">
-            <button class="btn btn-primary" onclick="changeValueFunction('logSumCellCounter')">LogSum</button>
-          </div>
-          <div class="btn-group" role="group">
             <button class="btn btn-primary" onclick="changeValueFunction('sumScaledCounter')">CatScaledSum</button>
           </div>
         </div>
@@ -60,13 +52,13 @@
           </div>
           <div class="btn-group btn-group-justified options">
             <div class="btn-group" role="group">
-              <button class="btn btn-primary" @click="modUnqWeight(-1)">UNQ -</button>
+              <button class="btn btn-primary" @click="modUnqWeight(-1)">Unique -</button>
             </div>
             <div class="btn-group" role="group">
               <button id='idf-display' class="btn btn-info" >{{ UNQ_WEIGHT }}</button>
             </div>
             <div class="btn-group" role="group">
-              <button class="btn btn-primary" @click="modUnqWeight(1)">UNQ +</button>
+              <button class="btn btn-primary" @click="modUnqWeight(1)">Unique +</button>
         </div>
           </div>
         </div>
