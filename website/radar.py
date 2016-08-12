@@ -3,8 +3,10 @@ import json
 import numpy as np
 from multiprocessing import Pool
 import functools
-
+# from elasticsearch import Elasticsearch
 from sklearn.cluster import MeanShift
+
+
 
 def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
     aql = ( "for doc in near('radar', @latt, @lonn, 100, @meters) filter doc.keyword == @keyword && "
@@ -15,8 +17,29 @@ def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
 
     return qres.response['result']
 
+def escheck_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
+    sea = {
+        'index': ['depth-radar'],
+        'query': {
+            'bool': {
+                'must': {
+                    { 'match_all': {} }
+                },
+                'filter':{
+                    'geo_distance': {
+                        'distance': '500m',
+                        'poi.location'
+                    }
+                }
+            }
+        }
+
+    }
+
+
 def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True,
     upsample=0, make_clusters=True):
+    '''Calls the Google Radar Api'''
     basetermdict = {'type': '', 'keyword': '', 'name': ''}
     params = {'location': '{0},{1}'.format(*coords),
               'radius': radius,

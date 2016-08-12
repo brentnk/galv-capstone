@@ -2,6 +2,7 @@ from flask import Flask, render_template, send_from_directory
 import radar as rd
 from pyArango.connection import *
 import configparser
+# from elasticsearch import Elasticsearch
 
 app = Flask(__name__, static_url_path='')
 
@@ -36,7 +37,8 @@ def radarrequest(terms):
     location = [39.7047, -105.0814]
     kwparams = {}
     print('Serving terms {}'.format(terms))
-    for t in terms.split(';')[:15]:
+    split_terms = terms.split(';')[:15]
+    for t in split_terms:
         t = t.strip()
         if t in search_types:
             print('Using type search [{}]'.format(t))
@@ -50,14 +52,23 @@ def radarrequest(terms):
         res['terms'].append(t)
     return json.dumps(res)
 
+def load_google_placetypes(path):
+    return [term.strip() for term in open(path).readlines()]
 
 if __name__ == '__main__':
     config = configparser.RawConfigParser()
-    config.read('../secrets.conf')
+    config.read('../application.conf')
 
-    conn = Connection(username=config.get('db', 'username'),
-                      password=config.get('db', 'password'))
+    escon = Elasticsearch(host=config.get('db.es', 'host'),
+                          port=config.getint('db.es', 'port'))
+
+    conn = Connection(username=config.get('db.arango', 'username'),
+                      password=config.get('db.arango', 'password'))
     db   = conn['capstone']
 
-    search_types = [term.strip() for term in open('../placetypes.txt').readlines()]
-    app.run(host='0.0.0.0', port=1337, debug=True)
+    host = config.get('host')
+    port = config.getint('port')
+    debug = config.getboolean('debug')
+
+    search_types = load_google_placetypes('../application.conf')
+    app.run(host=host, port=port, debug=debug)

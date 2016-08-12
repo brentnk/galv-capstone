@@ -1,0 +1,21 @@
+version: '2'
+services:
+  elasticsearch-capstone:
+    image: elasticsearch:2
+    container_name: es-cap
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - escap-vol:/usr/share/elasticsearch/data
+    networks:
+      - capstone
+
+volumes:
+  escap-vol:
+    external:
+      name: elastic-depth
+
+networks:
+  capstone:
+    driver: bridge
