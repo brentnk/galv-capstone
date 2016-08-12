@@ -4,29 +4,34 @@ import numpy as np
 from multiprocessing import Pool
 import functools
 from elasticsearch import Elasticsearch
-from elasticsearch_dsl import Search, Q
+from elasticsearch_dsl import Search, Q, DocType, String, Date, GeoPoint
 from sklearn.cluster import MeanShift
+from datetime import datetime
+import pytz
 
+class Poi(DocType):
+    keyword = String()
+    location = GeoPoint()
+    qlocation = GeoPoint()
+    placeid = String()
+    ts = Date()
 
+    class Meta:
+        index = 'depth-radar'
 
-def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
-    aql = ( "for doc in near('radar', @latt, @lonn, 100, @meters) filter doc.keyword == @keyword && "
-            "doc.name == @name && doc.type == @type return doc")
-    bind_vars = {'latt': lat, 'lonn': lon, 'meters': str(meters), 'type': '', 'keyword': '', 'name': ''}
-    bind_vars.update(terms)
-    qres = db.AQLQuery(aql, rawResults=False, batchSize=100, bindVars=bind_vars)
-
-    return qres.response['result']
+    def save(self, ** kwargs):
+        self.ts = datetime.now()
+        return super().save(** kwargs)
 
 def escheck_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
     s = Search(using=db, index='depth-radar')
     s = s.filter('geo_distance', distance=str(meters)+'m',
-                   q_location={'lat': lat, 'lon': lon})
+                   qlocation={'lat': lat, 'lon': lon})
 
     return s.execute()
 
 
-def get_radar(coords, radius, key):
+def get_radar(coords, radius, key, params):
     root = 'https://maps.googleapis.com/maps/api/place/radarsearch/json'
     r = requests.get(root, params=params, timeout=3)
     if r.status_code == requests.codes.ok:
@@ -49,29 +54,27 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     basetermdict.update(termdict)
     params.update(basetermdict)
 
-    db_col = db['radar']
-
-
-    cached = check_cached(coords[0], coords[1], terms=basetermdict, db=db)
+    cached = escheck_cached(coords[0], coords[1], terms=basetermdict, db=db)
     collection = []
 
     if len(cached) > 0 and not force:
         print('Cache hit: {0} {1}'.format(basetermdict, coords))
-        collection = parse_gresults(cached[0]['response']['results'], params)
+        collection = extract_es(cached)
     else:
         print('Cache miss: {0} {1}'.format(basetermdict, coords))
         print('requesting...')
-        res = get_radar(coords, radius, key)
+        res = get_radar(coords, radius, key, params)
         collection = parse_gresults(res, params)
 
         if do_cache:
-            tim = time.time()*1000
             for x in collection:
-                doc = {'keyword': x[0], 'location': [x[1], x[2]],
-                       'q_location': coords, 'ts':tim}
-            
+                print(x)
+                doc = Poi()
+                doc.keyword = x[0]
+                doc.location = [ x[1], x[2] ]
+                doc.qlocation =  coords[::-1]
 
-
+                doc.save(using=db)
             print('cached: complete')
 
     if make_clusters:
@@ -80,9 +83,7 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     if upsample > 0:
         pool = Pool(8)
         print('upsampling {} results...'.format(len(collection)))
-        pp = functools.partial(rayleigh_upsample,mean_shift=.0105, samples=upsample, mean=4)
-        # collection = [[tag] + x[1:] for x in collection] # add tag to each point
-        # ups = pool.map(pp, np.array([x[1:] for x in collection]))
+        pp = functools.partial(rayleigh_upsample,mean_shift=.0105, samples=upsample, mean=4) # PYTHON 3.5+ !!!
         ups = pool.map(pp, np.array(collection))
         pool.close()
         pool.join()
@@ -111,6 +112,8 @@ def rayleigh_upsample(loc=np.array([0.0,0.0]), mean_shift=1, samples=20, mean=2)
         direction = np.random.rand(samples) * 2 * 3.141559
         return (np.atleast_2d(loc) + pol2cart(magnitude, direction)).tolist()
 
+def extract_es(results):
+    return [[x.keyword]+list(x.location) for x in results]
 def parse_gresults(results, params):
     collection = []
 

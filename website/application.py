@@ -2,7 +2,7 @@ from flask import Flask, render_template, send_from_directory
 import radar as rd
 from pyArango.connection import *
 import configparser
-# from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch
 
 app = Flask(__name__, static_url_path='')
 
@@ -45,7 +45,7 @@ def radarrequest(terms):
             kwparams['type'] = t
         else:
             kwparams['keyword'] = t
-        res[t] = rd.radar(location, kwparams, db,
+        res[t] = rd.radar(location, kwparams, escon,
             radius=25000,
             key=config.get('keys', 'google_places_api_key'),
             upsample=720)
@@ -62,13 +62,9 @@ if __name__ == '__main__':
     escon = Elasticsearch(host=config.get('db.es', 'host'),
                           port=config.getint('db.es', 'port'))
 
-    conn = Connection(username=config.get('db.arango', 'username'),
-                      password=config.get('db.arango', 'password'))
-    db   = conn['capstone']
+    host = config.get('app', 'host')
+    port = config.getint('app', 'port')
+    debug = config.getboolean('app', 'debug')
 
-    host = config.get('host')
-    port = config.getint('port')
-    debug = config.getboolean('debug')
-
-    search_types = load_google_placetypes('../application.conf')
+    search_types = load_google_placetypes('../placetypes.txt')
     app.run(host=host, port=port, debug=debug)

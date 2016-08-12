@@ -5,7 +5,7 @@ mappings:
         type: string
       location:
         type: geo_point
-      q_location:
+      qlocation:
         type: geo_point
       placeid:
         type: string
