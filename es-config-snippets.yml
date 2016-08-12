@@ -1,9 +1,13 @@
 mappings:
   poi:
     properties:
-      name:
+      keyword:
         type: string
       location:
         type: geo_point
+      q_location:
+        type: geo_point
       placeid:
         type: string
+      ts:
+        type: date

@@ -3,7 +3,8 @@ import json
 import numpy as np
 from multiprocessing import Pool
 import functools
-# from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search, Q
 from sklearn.cluster import MeanShift
 
 
@@ -18,23 +19,24 @@ def check_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
     return qres.response['result']
 
 def escheck_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
-    sea = {
-        'index': ['depth-radar'],
-        'query': {
-            'bool': {
-                'must': {
-                    { 'match_all': {} }
-                },
-                'filter':{
-                    'geo_distance': {
-                        'distance': '500m',
-                        'poi.location'
-                    }
-                }
-            }
-        }
+    s = Search(using=db, index='depth-radar')
+    s = s.filter('geo_distance', distance=str(meters)+'m',
+                   q_location={'lat': lat, 'lon': lon})
 
-    }
+    return s.execute()
+
+
+def get_radar(coords, radius, key):
+    root = 'https://maps.googleapis.com/maps/api/place/radarsearch/json'
+    r = requests.get(root, params=params, timeout=3)
+    if r.status_code == requests.codes.ok:
+        result_doc = r.json()
+        if result_doc['status'] != 'OK':
+            print(result_doc.keys())
+            print('[ERR]{0} request failed: {1}'.format(result_doc['status'],''))#result_doc['error_message']))
+            return collection
+        print('[OK] status complete')
+    return result_doc['results']
 
 
 def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True,
@@ -49,7 +51,6 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
 
     db_col = db['radar']
 
-    root = 'https://maps.googleapis.com/maps/api/place/radarsearch/json'
 
     cached = check_cached(coords[0], coords[1], terms=basetermdict, db=db)
     collection = []
@@ -60,21 +61,17 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
     else:
         print('Cache miss: {0} {1}'.format(basetermdict, coords))
         print('requesting...')
-        r = requests.get(root, params=params, timeout=3)
-        if r.status_code == requests.codes.ok:
-            result_doc = r.json()
-            if result_doc['status'] != 'OK':
-                print(result_doc.keys())
-                print('[ERR]{0} request failed: {1}'.format(result_doc['status'],''))#result_doc['error_message']))
-                return collection
-            print('[OK] status complete')
-            collection = parse_gresults(result_doc['results'], params)
+        res = get_radar(coords, radius, key)
+        collection = parse_gresults(res, params)
 
-            if do_cache:
-                doc = db_col.createDocument(initValues=params)
-                doc['location'] = coords
-                doc['response'] = result_doc
-                doc.save()
+        if do_cache:
+            tim = time.time()*1000
+            for x in collection:
+                doc = {'keyword': x[0], 'location': [x[1], x[2]],
+                       'q_location': coords, 'ts':tim}
+            
+
+
             print('cached: complete')
 
     if make_clusters:

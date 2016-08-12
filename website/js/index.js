@@ -177,13 +177,15 @@ function pairwiseLayerDifferences(hexValueCounts, hexLayerCounts) {
 
 function highlightHexagons(num) {
   var hexrank = hexOverlay.hexagons[0].map((a) => +a.getAttribute('value'));
-  var top = hexrank.sort();
-  console.log(top.slice(-10));
+  var top = hexrank.sort().slice(-num);
+  // console.log(top.slice(-10));
+  console.log('top[0] ->', top[0])
   d3.select('g').selectAll('path.hexbin-hexagon')
-    // .each((d)=>{console.log(d); return d;})
-    .filter((d) => hexOverlay.options.value(d) < top[0])
-    .attr('stroke', 'red')
-    .attr('stroke-width', '4');
+    // .each((d)=>{console.log(hexOverlay.options.value(d)); return d;})
+    // .filter((d) => hexOverlay.options.value(d) < top[0])
+    .filter((d) => hexOverlay.options.value(d) >= top[0])
+    .style('stroke', 'red')
+    .style('stroke-width', '4');
   // d3.select('g.hexagon').enter
 }
 
