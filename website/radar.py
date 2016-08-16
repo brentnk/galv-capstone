@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import Pool
 import functools
 from elasticsearch import Elasticsearch
-from elasticsearch_dsl import Search, Q, DocType, String, Date, GeoPoint
+from elasticsearch_dsl import Search, Q, DocType, String, Date, GeoPoint, InnerObjectWrapper, Nested
 from sklearn.cluster import MeanShift
 from datetime import datetime
 import pytz
@@ -23,8 +23,9 @@ class Poi(DocType):
         self.ts = datetime.now()
         return super().save(** kwargs)
 
-def escheck_cached(lat=0.0, lon=0.0, terms = {}, meters=500, db=None):
-    s = Search(using=db, index='depth-radar')
+def escheck_cached(lat=0.0, lon=0.0, keyword = '', meters=500, db=None):
+    s = Search(using=db, index='depth-radar')[0:200]
+    s = s.filter('term', keyword=keyword)
     s = s.filter('geo_distance', distance=str(meters)+'m',
                    qlocation={'lat': lat, 'lon': lon})
 
@@ -47,18 +48,19 @@ def get_radar(coords, radius, key, params):
 def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True,
     upsample=0, make_clusters=True):
     '''Calls the Google Radar Api'''
-    basetermdict = {'type': '', 'keyword': '', 'name': ''}
+    basetermdict = {  'keyword': '' }
     params = {'location': '{0},{1}'.format(*coords),
               'radius': radius,
               'key': key}
     basetermdict.update(termdict)
     params.update(basetermdict)
 
-    cached = escheck_cached(coords[0], coords[1], terms=basetermdict, db=db)
+    cached = escheck_cached(coords[0], coords[1], keyword=basetermdict['keyword'], db=db)
     collection = []
 
     if len(cached) > 0 and not force:
         print('Cache hit: {0} {1}'.format(basetermdict, coords))
+        print(cached)
         collection = extract_es(cached)
     else:
         print('Cache miss: {0} {1}'.format(basetermdict, coords))
@@ -68,11 +70,10 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
 
         if do_cache:
             for x in collection:
-                print(x)
                 doc = Poi()
                 doc.keyword = x[0]
                 doc.location = [ x[1], x[2] ]
-                doc.qlocation =  coords[::-1]
+                doc.qlocation =  coords[::-1] # store as lng, lat
 
                 doc.save(using=db)
             print('cached: complete')
@@ -102,7 +103,7 @@ def radar(coords, termdict, db, force=False, radius=20000, key='', do_cache=True
 
 def cluster_results(results):
     model = MeanShift(bandwidth=0.015, cluster_all=False)
-    print(results[0])
+
     res = model.fit(np.array(results)[:,1:].astype(float))
     print('cluster centers shape: {}'.format(res.cluster_centers_.shape))
     return res.cluster_centers_.tolist()
@@ -114,6 +115,7 @@ def rayleigh_upsample(loc=np.array([0.0,0.0]), mean_shift=1, samples=20, mean=2)
 
 def extract_es(results):
     return [[x.keyword]+list(x.location) for x in results]
+
 def parse_gresults(results, params):
     collection = []
 

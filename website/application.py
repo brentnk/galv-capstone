@@ -40,11 +40,7 @@ def radarrequest(terms):
     split_terms = terms.split(';')[:15]
     for t in split_terms:
         t = t.strip()
-        if t in search_types:
-            print('Using type search [{}]'.format(t))
-            kwparams['type'] = t
-        else:
-            kwparams['keyword'] = t
+        kwparams['keyword'] = t
         res[t] = rd.radar(location, kwparams, escon,
             radius=25000,
             key=config.get('keys', 'google_places_api_key'),
