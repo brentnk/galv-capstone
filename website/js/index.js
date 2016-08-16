@@ -44,21 +44,6 @@ hexOverlay.addTo(map)
   currentColorScaleIndex = (currentColorScaleIndex + 1) % colorScales.length;
   hexOverlay.colorScale(d3.scaleSequential(colorScales[currentColorScaleIndex]));
 });
-// .hexMouseOver(function(d) {
-//     d3.select(this)
-//       .style("stroke-width", 1.5)
-//       .style("opacity", 0.90)
-//     d3.select("#json-print")
-//       .style("color", "#ccc")
-//       .text(JSON.stringify(d,undefined, 2));
-// })
-// .hexMouseOut(function(d) {
-//   d3.select(this)
-//     .style("stroke-width", null);
-//   d3.select("#json-print")
-//     .style("color", null)
-//     .text(JSON.stringify(d,undefined, 2));)
-;
 
 var cb = {};
 var poi = [];
@@ -145,7 +130,6 @@ function modUnqWeight(val, hexOverlay) {
 }
 
 function poiFilter(a) {
-  // console.log('filtering collection...');
   return _.reject(poi, (d) => labelFilter.has(d[0]));
 }
 
@@ -178,15 +162,11 @@ function pairwiseLayerDifferences(hexValueCounts, hexLayerCounts) {
 function highlightHexagons(num) {
   var hexrank = hexOverlay.hexagons[0].map((a) => +a.getAttribute('value'));
   var top = hexrank.sort().slice(-num);
-  // console.log(top.slice(-10));
   console.log('top[0] ->', top[0])
   d3.select('g').selectAll('path.hexbin-hexagon')
-    // .each((d)=>{console.log(hexOverlay.options.value(d)); return d;})
-    // .filter((d) => hexOverlay.options.value(d) < top[0])
     .filter((d) => hexOverlay.options.value(d) >= top[0])
     .style('stroke', 'red')
     .style('stroke-width', '4');
-  // d3.select('g.hexagon').enter
 }
 
 function _layerDifference(hexValueCounts, term1, term2) {
@@ -228,7 +208,6 @@ function* enumerateLayerPairs() {
 
   for(var i = 0; i < totals.size - 1; i++) {
     for (var j = i + 1; j < totals.size; j++) {
-      // console.log(`${keys[i]} -- ${keys[j]}`);
       yield [keys[i], keys[j]];
     }
   }
